@@ -1,5 +1,5 @@
 {
-  "name": "bidmart-core-fe",
+  "name": "bidmart-admin-fe",
   "private": true,
   "type": "module",
   "scripts": {
