@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLoaderData, useLocation, useNavigate } from "react-router";
-import { Shield, Users, LogOut, UserRoundSearch, Gavel, Scale } from "lucide-react";
+import { Shield, Users, LogOut, UserRoundSearch, Gavel, Scale, KeyRound, SlidersHorizontal } from "lucide-react";
 import { useLogoutMutation } from "~/modules/auth/presentation/hooks/use-logout-mutation";
 import { Avatar, AvatarFallback } from "~/shared/components/ui/avatar";
 import { Button } from "~/shared/components/ui/button";
@@ -12,6 +12,8 @@ const navItems = [
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/moderation/listings", label: "Listing Moderation", icon: Gavel },
   { to: "/admin/disputes", label: "Disputes", icon: Scale },
+  { to: "/admin/rbac/roles", label: "Roles", icon: KeyRound },
+  { to: "/admin/rbac/permissions", label: "Permissions", icon: SlidersHorizontal },
 ];
 
 export async function loader({ request }: { request: Request }) {
@@ -29,6 +31,10 @@ export default function AdminLayoutRoute() {
     panelLabel = "Admin Panel / Listing Moderation";
   } else if (pathname.startsWith("/admin/disputes")) {
     panelLabel = "Admin Panel / Dispute Management";
+  } else if (pathname.startsWith("/admin/rbac/roles")) {
+    panelLabel = "Admin Panel / RBAC Roles";
+  } else if (pathname.startsWith("/admin/rbac/permissions")) {
+    panelLabel = "Admin Panel / RBAC Permissions";
   }
 
   return (

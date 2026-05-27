@@ -44,6 +44,46 @@ export type AdminSessionActionResult = {
   revokedCount: number;
 };
 
+export type AdminRbacRole = {
+  id: number;
+  name: string;
+  permissions: string[];
+  memberCount: number;
+};
+
+export type AdminRbacRoleMember = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+};
+
+export type AdminRbacRoleDetail = {
+  id: number;
+  name: string;
+  permissions: string[];
+  members: AdminRbacRoleMember[];
+};
+
+export type AdminRbacUserAssignment = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  roles: string[];
+};
+
+export type AdminRbacPermissionsPanel = {
+  roles: AdminRbacRole[];
+  users: AdminRbacUserAssignment[];
+  permissions: string[];
+};
+
+export type AdminRbacMutationResult = {
+  message: string;
+  changed: boolean;
+};
+
 export type AdminListingModeration = {
   id: string;
   title: string;
@@ -314,6 +354,87 @@ const mockDisputes: AdminDispute[] = [
   },
 ];
 
+const mockRbacRoles: AdminRbacRole[] = [
+  {
+    id: 1,
+    name: "ADMIN",
+    permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
+    memberCount: 1,
+  },
+  {
+    id: 2,
+    name: "SELLER",
+    permissions: [],
+    memberCount: 1,
+  },
+  {
+    id: 3,
+    name: "BIDDER",
+    permissions: [],
+    memberCount: 2,
+  },
+];
+
+const mockRbacRoleDetails: AdminRbacRoleDetail[] = [
+  {
+    id: 1,
+    name: "ADMIN",
+    permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
+    members: [
+      {
+        id: "u-1001",
+        name: "Rafi Pratama",
+        email: "rafi.pratama@bidmart.test",
+        status: "ACTIVE",
+      },
+    ],
+  },
+  {
+    id: 2,
+    name: "SELLER",
+    permissions: [],
+    members: [
+      {
+        id: "u-1002",
+        name: "Nadia Putri",
+        email: "nadia.putri@bidmart.test",
+        status: "PENDING_VERIFICATION",
+      },
+    ],
+  },
+  {
+    id: 3,
+    name: "BIDDER",
+    permissions: [],
+    members: [
+      {
+        id: "u-1001",
+        name: "Rafi Pratama",
+        email: "rafi.pratama@bidmart.test",
+        status: "ACTIVE",
+      },
+      {
+        id: "u-1003",
+        name: "Bagus Saputra",
+        email: "bagus.saputra@bidmart.test",
+        status: "DISABLED",
+      },
+    ],
+  },
+];
+
+const mockRbacPermissionsPanel: AdminRbacPermissionsPanel = {
+  roles: mockRbacRoles,
+  users: mockUsers.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    status: user.status,
+    roles: user.roles,
+  })),
+  permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
+};
+
 function resolveApiBaseUrl(requestUrl: string): string {
   const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
   if (!raw) {
@@ -352,6 +473,41 @@ type ApiManagedUserSession = {
   lastActiveAt: string;
   expiredAt: string;
   status: "ACTIVE" | "REVOKED";
+};
+
+type ApiRbacRole = {
+  id: number;
+  name: string;
+  permissions: string[];
+  memberCount: number;
+};
+
+type ApiRbacRoleMember = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+};
+
+type ApiRbacRoleDetail = {
+  id: number;
+  name: string;
+  permissions: string[];
+  members: ApiRbacRoleMember[];
+};
+
+type ApiRbacUserAssignment = {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  roles: string[];
+};
+
+type ApiRbacPermissionsPanel = {
+  roles: ApiRbacRole[];
+  users: ApiRbacUserAssignment[];
+  permissions: string[];
 };
 
 export async function getAdminSession(request: Request): Promise<AdminSession | null> {
@@ -412,6 +568,52 @@ async function fetchFromAdminApi<T>(request: Request, path: string): Promise<T |
   }
 }
 
+async function postToAdminApi<T>(
+  request: Request,
+  path: string,
+  payload: unknown,
+  fallbackMessage: string,
+): Promise<{ data: T | null; message: string | null; status: number }> {
+  try {
+    const url = new URL(path, resolveApiBaseUrl(request.url));
+    const headers = new Headers({
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    });
+    const cookie = request.headers.get("cookie");
+    if (cookie) headers.set("Cookie", cookie);
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers,
+      credentials: "include",
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let message = fallbackMessage;
+      try {
+        const body = (await response.json()) as { message?: string };
+        if (body.message) message = body.message;
+      } catch {
+        // Keep fallback message when parsing fails.
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Response(message, { status: response.status });
+      }
+      return { data: null, message, status: response.status };
+    }
+
+    const data = (await response.json()) as T;
+    return { data, message: null, status: response.status };
+  } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
+    return { data: null, message: `Network error: ${fallbackMessage}`, status: 0 };
+  }
+}
+
 export async function requireAdminSession(request: Request): Promise<AdminSession> {
   const session = await getAdminSession(request);
   if (!session) throw redirect("/login");
@@ -444,6 +646,18 @@ export function getMockDisputes(): AdminDispute[] {
 
 export function getMockDisputeById(disputeId: string): AdminDispute | null {
   return mockDisputes.find((dispute) => dispute.id === disputeId) ?? null;
+}
+
+export function getMockRbacRoles(): AdminRbacRole[] {
+  return mockRbacRoles;
+}
+
+export function getMockRbacRoleById(roleId: number): AdminRbacRoleDetail | null {
+  return mockRbacRoleDetails.find((role) => role.id === roleId) ?? null;
+}
+
+export function getMockRbacPermissionsPanel(): AdminRbacPermissionsPanel {
+  return mockRbacPermissionsPanel;
 }
 
 export async function fetchModerationListings(
@@ -606,6 +820,82 @@ export async function revokeAllManagedUserSessionsById(
     }
     return { data: null, message: "Network error while revoking sessions.", status: 0 };
   }
+}
+
+export async function fetchRbacRoles(request: Request): Promise<AdminRbacRole[] | null> {
+  return fetchFromAdminApi<ApiRbacRole[]>(request, "/admin/rbac/roles");
+}
+
+export async function fetchRbacRoleById(
+  request: Request,
+  roleId: number,
+): Promise<AdminRbacRoleDetail | null> {
+  return fetchFromAdminApi<ApiRbacRoleDetail>(request, `/admin/rbac/roles/${roleId}`);
+}
+
+export async function fetchRbacPermissionsPanel(
+  request: Request,
+): Promise<AdminRbacPermissionsPanel | null> {
+  return fetchFromAdminApi<ApiRbacPermissionsPanel>(request, "/admin/rbac/permissions");
+}
+
+export async function createRbacRole(
+  request: Request,
+  payload: { name: string },
+): Promise<{ data: AdminRbacRole | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminRbacRole>(request, "/admin/rbac/roles", payload, "Failed to create role.");
+}
+
+export async function assignUserRoleForRbac(
+  request: Request,
+  userId: string,
+  payload: { role: string },
+): Promise<{ data: AdminRbacMutationResult | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminRbacMutationResult>(
+    request,
+    `/admin/rbac/users/${encodeURIComponent(userId)}/roles/assign`,
+    payload,
+    "Failed to assign role.",
+  );
+}
+
+export async function revokeUserRoleForRbac(
+  request: Request,
+  userId: string,
+  payload: { role: string },
+): Promise<{ data: AdminRbacMutationResult | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminRbacMutationResult>(
+    request,
+    `/admin/rbac/users/${encodeURIComponent(userId)}/roles/revoke`,
+    payload,
+    "Failed to revoke role.",
+  );
+}
+
+export async function assignRolePermissionForRbac(
+  request: Request,
+  role: string,
+  payload: { permission: string },
+): Promise<{ data: AdminRbacMutationResult | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminRbacMutationResult>(
+    request,
+    `/admin/rbac/roles/${encodeURIComponent(role)}/permissions/assign`,
+    payload,
+    "Failed to assign permission.",
+  );
+}
+
+export async function revokeRolePermissionForRbac(
+  request: Request,
+  role: string,
+  payload: { permission: string },
+): Promise<{ data: AdminRbacMutationResult | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminRbacMutationResult>(
+    request,
+    `/admin/rbac/roles/${encodeURIComponent(role)}/permissions/revoke`,
+    payload,
+    "Failed to revoke permission.",
+  );
 }
 
 export async function fetchManagedUsers(request: Request): Promise<AdminManagedUser[] | null> {
