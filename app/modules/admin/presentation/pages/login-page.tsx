@@ -11,7 +11,7 @@ export function LoginPage() {
   function handleSubmit(values: LoginFormValues) {
     login.mutate(
       { email: values.email, password: values.password },
-      { onSuccess: () => navigate("/admin/users") },
+      { onSuccess: () => navigate("/posts") },
     );
   }
 

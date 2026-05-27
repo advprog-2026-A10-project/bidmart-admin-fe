@@ -77,7 +77,7 @@ export function VerifyEmailContent({ token, email }: VerifyEmailContentProps) {
             {verifyEmail.data.message || "Your email has been verified!"}
           </p>
           <Button asChild>
-            <Link to="/login">Continue to sign in</Link>
+            <Link to="/auth/login">Continue to sign in</Link>
           </Button>
         </div>
       );
@@ -140,7 +140,7 @@ export function VerifyEmailContent({ token, email }: VerifyEmailContentProps) {
 
       <p className="text-muted-foreground text-center text-sm">
         <Link
-          to="/login"
+          to="/auth/login"
           className="hover:text-primary font-medium underline underline-offset-4"
         >
           Back to sign in
