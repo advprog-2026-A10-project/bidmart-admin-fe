@@ -84,6 +84,72 @@ export type AdminRbacMutationResult = {
   changed: boolean;
 };
 
+export type AdminSystemActivityKpi = {
+  activeAuctions: number;
+  bidsLast24h: number;
+  openDisputes: number;
+  publishedEventsLast24h: number;
+};
+
+export type AdminSystemActivityEvent = {
+  kind: string;
+  title: string;
+  detail: string;
+  occurredAt: string;
+};
+
+export type AdminSystemActivitySnapshot = {
+  generatedAt: string;
+  kpi: AdminSystemActivityKpi;
+  recentEvents: AdminSystemActivityEvent[];
+};
+
+export type AdminSystemSecurityPolicy = {
+  maxConcurrentSessions: number;
+  enforcementMode: "REJECT_NEW" | "REVOKE_OLDEST";
+  forceMfaForAdmin: boolean;
+  updatedAt: string;
+};
+
+export type AdminSystemSecurityOverview = {
+  activeSessions: number;
+  usersWithMultipleSessions: number;
+  mfaSatisfiedSessions: number;
+  mfaUnsatisfiedSessions: number;
+};
+
+export type AdminSystemSecurityRuntime = {
+  sessionCookieName: string;
+  sessionCookieSecure: boolean;
+  sessionCookieSameSite: string;
+  authzCacheTtlSeconds: number;
+};
+
+export type AdminSystemSecurityLoginAudit = {
+  sessionId: string;
+  userId: string;
+  name: string;
+  email: string;
+  status: string;
+  ip: string;
+  location: string;
+  device: string;
+  browser: string;
+  os: string;
+  mfaSatisfied: boolean;
+  createdAt: string;
+  lastActiveAt: string;
+  expiredAt: string;
+};
+
+export type AdminSystemSecuritySnapshot = {
+  generatedAt: string;
+  policy: AdminSystemSecurityPolicy;
+  overview: AdminSystemSecurityOverview;
+  runtime: AdminSystemSecurityRuntime;
+  loginAudit: AdminSystemSecurityLoginAudit[];
+};
+
 export type AdminListingModeration = {
   id: string;
   title: string;
@@ -435,6 +501,92 @@ const mockRbacPermissionsPanel: AdminRbacPermissionsPanel = {
   permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
 };
 
+const mockSystemActivitySnapshot: AdminSystemActivitySnapshot = {
+  generatedAt: "2026-05-27T10:30:00.000Z",
+  kpi: {
+    activeAuctions: 7,
+    bidsLast24h: 124,
+    openDisputes: 2,
+    publishedEventsLast24h: 61,
+  },
+  recentEvents: [
+    {
+      kind: "BID",
+      title: "Apple iPhone 14 Pro 256GB - Like New",
+      detail: "Bid 12750000 by Rafi Pratama",
+      occurredAt: "2026-05-27T10:27:10.000Z",
+    },
+    {
+      kind: "EVENT",
+      title: "Order Update",
+      detail: "Order ord-9001 moved to SHIPPED",
+      occurredAt: "2026-05-27T10:24:02.000Z",
+    },
+    {
+      kind: "DISPUTE",
+      title: "Mechanical Keyboard 75% Hot-Swap + Keycaps PBT",
+      detail: "Dispute status: OPEN",
+      occurredAt: "2026-05-27T10:20:15.000Z",
+    },
+  ],
+};
+
+const mockSystemSecuritySnapshot: AdminSystemSecuritySnapshot = {
+  generatedAt: "2026-05-27T10:30:00.000Z",
+  policy: {
+    maxConcurrentSessions: 3,
+    enforcementMode: "REVOKE_OLDEST",
+    forceMfaForAdmin: true,
+    updatedAt: "2026-05-27T09:00:00.000Z",
+  },
+  overview: {
+    activeSessions: 14,
+    usersWithMultipleSessions: 4,
+    mfaSatisfiedSessions: 11,
+    mfaUnsatisfiedSessions: 3,
+  },
+  runtime: {
+    sessionCookieName: "admin_session",
+    sessionCookieSecure: false,
+    sessionCookieSameSite: "Lax",
+    authzCacheTtlSeconds: 60,
+  },
+  loginAudit: [
+    {
+      sessionId: "sess-rafi-1",
+      userId: "u-1001",
+      name: "Rafi Pratama",
+      email: "rafi.pratama@bidmart.test",
+      status: "ACTIVE",
+      ip: "103.77.12.22",
+      location: "Jakarta, ID",
+      device: "Chrome on macOS",
+      browser: "Chrome",
+      os: "macOS",
+      mfaSatisfied: true,
+      createdAt: "2026-05-27T10:22:00.000Z",
+      lastActiveAt: "2026-05-27T10:28:00.000Z",
+      expiredAt: "2026-05-28T10:22:00.000Z",
+    },
+    {
+      sessionId: "sess-nadia-1",
+      userId: "u-1002",
+      name: "Nadia Putri",
+      email: "nadia.putri@bidmart.test",
+      status: "PENDING_VERIFICATION",
+      ip: "36.82.100.51",
+      location: "Bandung, ID",
+      device: "Firefox on Windows",
+      browser: "Firefox",
+      os: "Windows",
+      mfaSatisfied: false,
+      createdAt: "2026-05-27T09:58:00.000Z",
+      lastActiveAt: "2026-05-27T10:12:00.000Z",
+      expiredAt: "2026-05-28T09:58:00.000Z",
+    },
+  ],
+};
+
 function resolveApiBaseUrl(requestUrl: string): string {
   const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
   if (!raw) {
@@ -508,6 +660,30 @@ type ApiRbacPermissionsPanel = {
   roles: ApiRbacRole[];
   users: ApiRbacUserAssignment[];
   permissions: string[];
+};
+
+type ApiSystemActivitySnapshot = {
+  generatedAt: string;
+  kpi: {
+    activeAuctions: number;
+    bidsLast24h: number;
+    openDisputes: number;
+    publishedEventsLast24h: number;
+  };
+  recentEvents: Array<{
+    kind: string;
+    title: string;
+    detail: string;
+    occurredAt: string;
+  }>;
+};
+
+type ApiSystemSecuritySnapshot = {
+  generatedAt: string;
+  policy: AdminSystemSecurityPolicy;
+  overview: AdminSystemSecurityOverview;
+  runtime: AdminSystemSecurityRuntime;
+  loginAudit: AdminSystemSecurityLoginAudit[];
 };
 
 export async function getAdminSession(request: Request): Promise<AdminSession | null> {
@@ -658,6 +834,14 @@ export function getMockRbacRoleById(roleId: number): AdminRbacRoleDetail | null 
 
 export function getMockRbacPermissionsPanel(): AdminRbacPermissionsPanel {
   return mockRbacPermissionsPanel;
+}
+
+export function getMockSystemActivitySnapshot(): AdminSystemActivitySnapshot {
+  return mockSystemActivitySnapshot;
+}
+
+export function getMockSystemSecuritySnapshot(): AdminSystemSecuritySnapshot {
+  return mockSystemSecuritySnapshot;
 }
 
 export async function fetchModerationListings(
@@ -820,6 +1004,34 @@ export async function revokeAllManagedUserSessionsById(
     }
     return { data: null, message: "Network error while revoking sessions.", status: 0 };
   }
+}
+
+export async function fetchSystemActivitySnapshot(
+  request: Request,
+): Promise<AdminSystemActivitySnapshot | null> {
+  return fetchFromAdminApi<ApiSystemActivitySnapshot>(request, "/admin/system/activity");
+}
+
+export async function fetchSystemSecuritySnapshot(
+  request: Request,
+): Promise<AdminSystemSecuritySnapshot | null> {
+  return fetchFromAdminApi<ApiSystemSecuritySnapshot>(request, "/admin/system/security");
+}
+
+export async function updateSystemSecurityPolicy(
+  request: Request,
+  payload: {
+    maxConcurrentSessions: number;
+    enforcementMode: "REJECT_NEW" | "REVOKE_OLDEST";
+    forceMfaForAdmin: boolean;
+  },
+): Promise<{ data: AdminSystemSecuritySnapshot | null; message: string | null; status: number }> {
+  return postToAdminApi<ApiSystemSecuritySnapshot>(
+    request,
+    "/admin/system/security",
+    payload,
+    "Failed to update security policy.",
+  );
 }
 
 export async function fetchRbacRoles(request: Request): Promise<AdminRbacRole[] | null> {
