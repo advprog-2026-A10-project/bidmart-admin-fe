@@ -72,7 +72,7 @@ export function LoginForm({ onSubmit, isSubmitting = false }: LoginFormProps) {
         <p className="text-muted-foreground text-center text-sm">
           Don&apos;t have an account?{" "}
           <Link
-            to="/register"
+            to="/auth/register"
             className="hover:text-primary font-medium underline underline-offset-4"
           >
             Create one
