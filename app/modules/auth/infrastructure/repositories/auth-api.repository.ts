@@ -13,10 +13,11 @@ import { AuthApiMapper } from "../api/auth-api.mapper";
  * All responses are validated against Zod schemas at this boundary (fail-fast).
  */
 export class AuthApiRepository implements IAuthRepository {
-  private readonly basePath = "/auth";
+  private readonly adminAuthBasePath = "/admin/auth";
+  private readonly authBasePath = "/auth";
 
   async login(credentials: { email: string; password: string }): Promise<User> {
-    const raw = await apiClient.post<unknown>(`${this.basePath}/login`, credentials);
+    const raw = await apiClient.post<unknown>(`${this.adminAuthBasePath}/login`, credentials);
     const validated = loginApiSchema.parse(raw);
     return AuthApiMapper.toDomain(validated.user);
   }
@@ -26,24 +27,24 @@ export class AuthApiRepository implements IAuthRepository {
     email: string;
     password: string;
   }): Promise<{ message: string }> {
-    const raw = await apiClient.post<unknown>(`${this.basePath}/register`, data);
+    const raw = await apiClient.post<unknown>(`${this.authBasePath}/register`, data);
     const validated = registerApiSchema.parse(raw);
     return { message: validated.message };
   }
 
   async verifyEmail(data: { token: string }): Promise<{ message: string }> {
-    const raw = await apiClient.post<unknown>(`${this.basePath}/verify-email`, data);
+    const raw = await apiClient.post<unknown>(`${this.authBasePath}/verify-email`, data);
     const validated = messageApiSchema.parse(raw);
     return { message: validated.message };
   }
 
   async resendVerification(data: { email: string }): Promise<{ message: string }> {
-    const raw = await apiClient.post<unknown>(`${this.basePath}/resend-verification`, data);
+    const raw = await apiClient.post<unknown>(`${this.authBasePath}/resend-verification`, data);
     const validated = messageApiSchema.parse(raw);
     return { message: validated.message };
   }
 
   async logout(): Promise<void> {
-    await apiClient.post<void>(`${this.basePath}/logout`);
+    await apiClient.post<void>(`${this.adminAuthBasePath}/logout`);
   }
 }
