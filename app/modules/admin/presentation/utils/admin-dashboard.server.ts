@@ -39,6 +39,11 @@ export type AdminUserSession = {
   status: "ACTIVE" | "REVOKED";
 };
 
+export type AdminSessionActionResult = {
+  message: string;
+  revokedCount: number;
+};
+
 export type AdminListingModeration = {
   id: string;
   title: string;
@@ -513,6 +518,93 @@ export async function resolveDisputeById(
       throw error;
     }
     return { data: null, message: "Network error while resolving dispute.", status: 0 };
+  }
+}
+
+export async function revokeManagedUserSessionById(
+  request: Request,
+  userId: string,
+  sessionId: string,
+): Promise<{ data: AdminSessionActionResult | null; message: string | null; status: number }> {
+  try {
+    const url = new URL(
+      `/admin/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}/revoke`,
+      resolveApiBaseUrl(request.url),
+    );
+    const headers = new Headers({ Accept: "application/json" });
+    const cookie = request.headers.get("cookie");
+    if (cookie) headers.set("Cookie", cookie);
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      let message = "Failed to revoke session.";
+      try {
+        const body = (await response.json()) as { message?: string };
+        if (body.message) message = body.message;
+      } catch {
+        // Keep default message when parsing fails.
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Response(message, { status: response.status });
+      }
+      return { data: null, message, status: response.status };
+    }
+
+    const data = (await response.json()) as AdminSessionActionResult;
+    return { data, message: null, status: response.status };
+  } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
+    return { data: null, message: "Network error while revoking session.", status: 0 };
+  }
+}
+
+export async function revokeAllManagedUserSessionsById(
+  request: Request,
+  userId: string,
+): Promise<{ data: AdminSessionActionResult | null; message: string | null; status: number }> {
+  try {
+    const url = new URL(
+      `/admin/users/${encodeURIComponent(userId)}/sessions/revoke-all`,
+      resolveApiBaseUrl(request.url),
+    );
+    const headers = new Headers({ Accept: "application/json" });
+    const cookie = request.headers.get("cookie");
+    if (cookie) headers.set("Cookie", cookie);
+
+    const response = await fetch(url.toString(), {
+      method: "POST",
+      headers,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      let message = "Failed to revoke sessions.";
+      try {
+        const body = (await response.json()) as { message?: string };
+        if (body.message) message = body.message;
+      } catch {
+        // Keep default message when parsing fails.
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Response(message, { status: response.status });
+      }
+      return { data: null, message, status: response.status };
+    }
+
+    const data = (await response.json()) as AdminSessionActionResult;
+    return { data, message: null, status: response.status };
+  } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
+    return { data: null, message: "Network error while revoking sessions.", status: 0 };
   }
 }
 
