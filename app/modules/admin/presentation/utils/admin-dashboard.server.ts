@@ -188,6 +188,17 @@ export type AdminDispute = {
   orderStatus: string;
 };
 
+export type AdminCategory = {
+  id: number;
+  parentId: number | null;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  childCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 const mockUsers: AdminManagedUser[] = [
   {
     id: "u-1001",
@@ -420,11 +431,51 @@ const mockDisputes: AdminDispute[] = [
   },
 ];
 
+const mockCategories: AdminCategory[] = [
+  {
+    id: 1,
+    parentId: null,
+    name: "Elektronik",
+    slug: "elektronik",
+    imageUrl: null,
+    childCount: 2,
+    createdAt: "2026-02-25T13:00:00.000Z",
+    updatedAt: "2026-02-25T13:00:00.000Z",
+  },
+  {
+    id: 2,
+    parentId: 1,
+    name: "Handphone",
+    slug: "handphone",
+    imageUrl: null,
+    childCount: 0,
+    createdAt: "2026-02-25T13:00:00.000Z",
+    updatedAt: "2026-02-25T13:00:00.000Z",
+  },
+  {
+    id: 3,
+    parentId: 1,
+    name: "Laptop",
+    slug: "laptop",
+    imageUrl: null,
+    childCount: 0,
+    createdAt: "2026-02-25T13:00:00.000Z",
+    updatedAt: "2026-02-25T13:00:00.000Z",
+  },
+];
+
 const mockRbacRoles: AdminRbacRole[] = [
   {
     id: 1,
     name: "ADMIN",
-    permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
+    permissions: [
+      "admin:access",
+      "admin:auth:read",
+      "user:suspend",
+      "listing:moderate",
+      "order:intervene",
+      "category:manage",
+    ],
     memberCount: 1,
   },
   {
@@ -445,7 +496,14 @@ const mockRbacRoleDetails: AdminRbacRoleDetail[] = [
   {
     id: 1,
     name: "ADMIN",
-    permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
+    permissions: [
+      "admin:access",
+      "admin:auth:read",
+      "user:suspend",
+      "listing:moderate",
+      "order:intervene",
+      "category:manage",
+    ],
     members: [
       {
         id: "u-1001",
@@ -498,7 +556,14 @@ const mockRbacPermissionsPanel: AdminRbacPermissionsPanel = {
     status: user.status,
     roles: user.roles,
   })),
-  permissions: ["admin:access", "admin:auth:read", "user:suspend", "listing:moderate", "order:intervene"],
+  permissions: [
+    "admin:access",
+    "admin:auth:read",
+    "user:suspend",
+    "listing:moderate",
+    "order:intervene",
+    "category:manage",
+  ],
 };
 
 const mockSystemActivitySnapshot: AdminSystemActivitySnapshot = {
@@ -686,6 +751,8 @@ type ApiSystemSecuritySnapshot = {
   loginAudit: AdminSystemSecurityLoginAudit[];
 };
 
+type ApiCategory = AdminCategory;
+
 export async function getAdminSession(request: Request): Promise<AdminSession | null> {
   try {
     const meUrl = new URL("/admin/auth/me", resolveApiBaseUrl(request.url));
@@ -790,6 +857,58 @@ async function postToAdminApi<T>(
   }
 }
 
+async function sendToAdminApi<T>(
+  request: Request,
+  path: string,
+  method: "POST" | "PATCH" | "DELETE",
+  payload: unknown,
+  fallbackMessage: string,
+): Promise<{ data: T | null; message: string | null; status: number }> {
+  try {
+    const url = new URL(path, resolveApiBaseUrl(request.url));
+    const headers = new Headers({ Accept: "application/json" });
+    if (payload !== undefined) {
+      headers.set("Content-Type", "application/json");
+    }
+
+    const cookie = request.headers.get("cookie");
+    if (cookie) headers.set("Cookie", cookie);
+
+    const response = await fetch(url.toString(), {
+      method,
+      headers,
+      credentials: "include",
+      body: payload === undefined ? undefined : JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      let message = fallbackMessage;
+      try {
+        const body = (await response.json()) as { message?: string };
+        if (body.message) message = body.message;
+      } catch {
+        // Keep fallback message when parsing fails.
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Response(message, { status: response.status });
+      }
+      return { data: null, message, status: response.status };
+    }
+
+    if (response.status === 204) {
+      return { data: null, message: null, status: response.status };
+    }
+
+    const data = (await response.json()) as T;
+    return { data, message: null, status: response.status };
+  } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
+    return { data: null, message: `Network error: ${fallbackMessage}`, status: 0 };
+  }
+}
+
 export async function requireAdminSession(request: Request): Promise<AdminSession> {
   const session = await getAdminSession(request);
   if (!session) throw redirect("/login");
@@ -822,6 +941,10 @@ export function getMockDisputes(): AdminDispute[] {
 
 export function getMockDisputeById(disputeId: string): AdminDispute | null {
   return mockDisputes.find((dispute) => dispute.id === disputeId) ?? null;
+}
+
+export function getMockCategories(): AdminCategory[] {
+  return mockCategories;
 }
 
 export function getMockRbacRoles(): AdminRbacRole[] {
@@ -869,6 +992,61 @@ export async function fetchDisputeById(
   disputeId: string,
 ): Promise<AdminDispute | null> {
   return fetchFromAdminApi<AdminDispute>(request, `/admin/disputes/${encodeURIComponent(disputeId)}`);
+}
+
+export async function fetchCategories(request: Request): Promise<AdminCategory[] | null> {
+  return fetchFromAdminApi<ApiCategory[]>(request, "/admin/categories");
+}
+
+export async function createCategory(
+  request: Request,
+  payload: {
+    name: string;
+    slug: string;
+    parentId: number | null;
+    imageUrl: string | null;
+  },
+): Promise<{ data: AdminCategory | null; message: string | null; status: number }> {
+  return sendToAdminApi<AdminCategory>(
+    request,
+    "/admin/categories",
+    "POST",
+    payload,
+    "Failed to create category.",
+  );
+}
+
+export async function updateCategory(
+  request: Request,
+  categoryId: number,
+  payload: {
+    name: string;
+    slug: string;
+    parentId: number | null;
+    imageUrl: string | null;
+  },
+): Promise<{ data: AdminCategory | null; message: string | null; status: number }> {
+  return sendToAdminApi<AdminCategory>(
+    request,
+    `/admin/categories/${encodeURIComponent(String(categoryId))}`,
+    "PATCH",
+    payload,
+    "Failed to update category.",
+  );
+}
+
+export async function deleteCategory(
+  request: Request,
+  categoryId: number,
+): Promise<{ data: null; message: string | null; status: number }> {
+  const result = await sendToAdminApi<null>(
+    request,
+    `/admin/categories/${encodeURIComponent(String(categoryId))}`,
+    "DELETE",
+    undefined,
+    "Failed to delete category.",
+  );
+  return { data: null, message: result.message, status: result.status };
 }
 
 export async function resolveDisputeById(
@@ -1004,6 +1182,30 @@ export async function revokeAllManagedUserSessionsById(
     }
     return { data: null, message: "Network error while revoking sessions.", status: 0 };
   }
+}
+
+export async function suspendManagedUserById(
+  request: Request,
+  userId: string,
+): Promise<{ data: AdminSessionActionResult | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminSessionActionResult>(
+    request,
+    `/admin/users/${encodeURIComponent(userId)}/suspend`,
+    {},
+    "Failed to suspend user.",
+  );
+}
+
+export async function reactivateManagedUserById(
+  request: Request,
+  userId: string,
+): Promise<{ data: AdminSessionActionResult | null; message: string | null; status: number }> {
+  return postToAdminApi<AdminSessionActionResult>(
+    request,
+    `/admin/users/${encodeURIComponent(userId)}/reactivate`,
+    {},
+    "Failed to reactivate user.",
+  );
 }
 
 export async function fetchSystemActivitySnapshot(

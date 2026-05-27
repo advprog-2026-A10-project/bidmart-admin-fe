@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Form, Link, useActionData, useLoaderData, useNavigation } from "react-router";
 import { ArrowLeft, Ban, CircleCheck, LogIn } from "lucide-react";
 import { Badge } from "~/shared/components/ui/badge";
 import { Button } from "~/shared/components/ui/button";
@@ -14,11 +14,18 @@ import {
   fetchManagedUserById,
   formatDateTime,
   getMockUserById,
+  reactivateManagedUserById,
   requireAdminSession,
+  suspendManagedUserById,
 } from "~/modules/admin/presentation/utils/admin-dashboard.server";
 
 type LoaderData = {
   user: AdminManagedUser;
+};
+
+type ActionData = {
+  success?: string;
+  error?: string;
 };
 
 export async function loader({
@@ -35,6 +42,43 @@ export async function loader({
   return { user };
 }
 
+export async function action({
+  request,
+  params,
+}: {
+  request: Request;
+  params: { userId?: string };
+}) {
+  await requireAdminSession(request);
+  const userId = params.userId ?? "";
+  if (!userId) {
+    return { error: "Invalid user id." } satisfies ActionData;
+  }
+
+  const formData = await request.formData();
+  const intent = String(formData.get("intent") ?? "");
+
+  if (intent === "suspend") {
+    const result = await suspendManagedUserById(request, userId);
+    if (!result.data) {
+      return { error: result.message ?? "Gagal suspend user." } satisfies ActionData;
+    }
+    return {
+      success: `${result.data.message} (${result.data.revokedCount} session)`,
+    } satisfies ActionData;
+  }
+
+  if (intent === "reactivate") {
+    const result = await reactivateManagedUserById(request, userId);
+    if (!result.data) {
+      return { error: result.message ?? "Gagal reactivate user." } satisfies ActionData;
+    }
+    return { success: result.data.message } satisfies ActionData;
+  }
+
+  return { error: "Invalid action." } satisfies ActionData;
+}
+
 function statusBadgeVariant(status: AdminManagedUser["status"]) {
   if (status === "ACTIVE") return "ghost";
   if (status === "DISABLED") return "destructive";
@@ -43,6 +87,10 @@ function statusBadgeVariant(status: AdminManagedUser["status"]) {
 
 export default function AdminUserDetailRoute() {
   const { user } = useLoaderData() as LoaderData;
+  const actionData = useActionData<ActionData>();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting";
+  const isDisabled = user.status === "DISABLED";
 
   return (
     <div className="space-y-4">
@@ -105,19 +153,38 @@ export default function AdminUserDetailRoute() {
       <Card className="gap-3">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
-            Placeholder aksi moderasi untuk WBS 1.4.5+ (akan disambungkan ke endpoint admin-be).
-          </CardDescription>
+          <CardDescription>Aksi suspend/reactivate user dan invalidasi session global.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" disabled>
-            <Ban className="size-4" />
-            Suspend User
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            <CircleCheck className="size-4" />
-            Reactivate User
-          </Button>
+        <CardContent className="space-y-3">
+          {actionData?.success && <p className="text-sm text-emerald-600">{actionData.success}</p>}
+          {actionData?.error && <p className="text-sm text-destructive">{actionData.error}</p>}
+
+          <div className="flex flex-wrap gap-2">
+            <Form method="post">
+              <Button
+                variant="destructive"
+                size="sm"
+                name="intent"
+                value="suspend"
+                disabled={isSubmitting || isDisabled}
+              >
+                <Ban className="size-4" />
+                {isSubmitting ? "Processing..." : "Suspend User"}
+              </Button>
+            </Form>
+            <Form method="post">
+              <Button
+                variant="outline"
+                size="sm"
+                name="intent"
+                value="reactivate"
+                disabled={isSubmitting || !isDisabled}
+              >
+                <CircleCheck className="size-4" />
+                {isSubmitting ? "Processing..." : "Reactivate User"}
+              </Button>
+            </Form>
+          </div>
         </CardContent>
       </Card>
     </div>
