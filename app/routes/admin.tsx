@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   Activity,
   ShieldCheck,
+  Tags,
 } from "lucide-react";
 import { useLogoutMutation } from "~/modules/auth/presentation/hooks/use-logout-mutation";
 import { Avatar, AvatarFallback } from "~/shared/components/ui/avatar";
@@ -23,6 +24,7 @@ const navItems = [
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/moderation/listings", label: "Listing Moderation", icon: Gavel },
   { to: "/admin/disputes", label: "Disputes", icon: Scale },
+  { to: "/admin/categories", label: "Categories", icon: Tags },
   { to: "/admin/rbac/roles", label: "Roles", icon: KeyRound },
   { to: "/admin/rbac/permissions", label: "Permissions", icon: SlidersHorizontal },
   { to: "/admin/system/activity", label: "System Activity", icon: Activity },
@@ -44,6 +46,8 @@ export default function AdminLayoutRoute() {
     panelLabel = "Admin Panel / Listing Moderation";
   } else if (pathname.startsWith("/admin/disputes")) {
     panelLabel = "Admin Panel / Dispute Management";
+  } else if (pathname.startsWith("/admin/categories")) {
+    panelLabel = "Admin Panel / Category Management";
   } else if (pathname.startsWith("/admin/rbac/roles")) {
     panelLabel = "Admin Panel / RBAC Roles";
   } else if (pathname.startsWith("/admin/rbac/permissions")) {

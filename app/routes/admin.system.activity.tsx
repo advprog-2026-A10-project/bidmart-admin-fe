@@ -24,6 +24,7 @@ import {
   getMockSystemActivitySnapshot,
   requireAdminSession,
 } from "~/modules/admin/presentation/utils/admin-dashboard.server";
+import { startSystemActivitySocket } from "~/modules/admin/infrastructure/realtime/system-activity-websocket";
 
 type LoaderData = {
   snapshot: AdminSystemActivitySnapshot;
@@ -46,10 +47,35 @@ export default function AdminSystemActivityRoute() {
   const revalidator = useRevalidator();
 
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      revalidator.revalidate();
-    }, 7000);
-    return () => window.clearInterval(interval);
+    let revalidateTimer: ReturnType<typeof setTimeout> | null = null;
+    let revalidateQueued = false;
+
+    const queueRevalidate = () => {
+      if (revalidateQueued) {
+        return;
+      }
+      revalidateQueued = true;
+      revalidateTimer = setTimeout(() => {
+        revalidateQueued = false;
+        revalidateTimer = null;
+        revalidator.revalidate();
+      }, 350);
+    };
+
+    const stopSocket = startSystemActivitySocket({
+      onEvent: (event) => {
+        if (event.type === "activity" || event.type === "bidPlaced" || event.type === "finalized") {
+          queueRevalidate();
+        }
+      },
+    });
+
+    return () => {
+      stopSocket();
+      if (revalidateTimer) {
+        clearTimeout(revalidateTimer);
+      }
+    };
   }, [revalidator]);
 
   return (
@@ -58,7 +84,7 @@ export default function AdminSystemActivityRoute() {
         <CardHeader>
           <CardTitle>System Activity</CardTitle>
           <CardDescription>
-            Monitoring aktivitas lelang, publikasi event, dan statistik operasional (auto-refresh 7 detik).
+            Monitoring aktivitas lelang, publikasi event, dan statistik operasional (websocket realtime).
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
