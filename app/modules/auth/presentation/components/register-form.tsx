@@ -109,7 +109,10 @@ export function RegisterForm({ onSubmit, isSubmitting = false }: RegisterFormPro
 
         <p className="text-muted-foreground text-center text-sm">
           Already have an account?{" "}
-          <Link to="/login" className="hover:text-primary font-medium underline underline-offset-4">
+          <Link
+            to="/login"
+            className="hover:text-primary font-medium underline underline-offset-4"
+          >
             Sign in
           </Link>
         </p>

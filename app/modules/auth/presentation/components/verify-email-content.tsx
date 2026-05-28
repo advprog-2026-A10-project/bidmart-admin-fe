@@ -139,7 +139,10 @@ export function VerifyEmailContent({ token, email }: VerifyEmailContentProps) {
       </div>
 
       <p className="text-muted-foreground text-center text-sm">
-        <Link to="/login" className="hover:text-primary font-medium underline underline-offset-4">
+        <Link
+          to="/login"
+          className="hover:text-primary font-medium underline underline-offset-4"
+        >
           Back to sign in
         </Link>
       </p>

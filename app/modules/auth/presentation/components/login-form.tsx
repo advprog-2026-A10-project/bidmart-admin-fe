@@ -1,7 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Link } from "react-router";
 import {
   Form,
   FormControl,
@@ -70,13 +69,7 @@ export function LoginForm({ onSubmit, isSubmitting = false }: LoginFormProps) {
         </Button>
 
         <p className="text-muted-foreground text-center text-sm">
-          Don&apos;t have an account?{" "}
-          <Link
-            to="/register"
-            className="hover:text-primary font-medium underline underline-offset-4"
-          >
-            Create one
-          </Link>
+          Admin accounts are provisioned by super admin.
         </p>
       </form>
     </Form>
