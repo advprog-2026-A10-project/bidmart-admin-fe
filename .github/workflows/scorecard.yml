@@ -1,4 +1,4 @@
-﻿name: scorecard
+name: scorecard
 on:
   push:
     branches:
@@ -18,7 +18,7 @@ jobs:
       actions: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run OpenSSF Scorecard
         uses: ossf/scorecard-action@v2
         with:
