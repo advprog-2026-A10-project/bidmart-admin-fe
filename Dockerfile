@@ -1,4 +1,4 @@
-FROM node:20-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 
 COPY package.json ./
@@ -23,7 +23,7 @@ RUN if [ -f pnpm-lock.yaml ]; then corepack enable && pnpm run build; \
     elif [ -f yarn.lock ]; then yarn build; \
     else npm run build; fi
 
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
